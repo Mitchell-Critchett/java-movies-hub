@@ -61,8 +61,8 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
                 } else {
                     sendBadRequest(ex);
                 }
+            }
         }
-    }
     }
 
     private void addMovie(HttpExchange ex) throws IOException {
@@ -109,7 +109,6 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
 
         } catch (JsonSyntaxException e) {
             sendBadRequest(ex);
-            return;
         } catch (IOException e) {
             // Ошибка чтения тела запроса
             sendJson(ex, 500, gson.toJson(new ErrorResponse("Неизвестная ошибка")));

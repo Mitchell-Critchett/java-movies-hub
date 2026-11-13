@@ -3,7 +3,7 @@ package ru.practicum.moviehub.api;
 import java.util.ArrayList;
 
 public class ErrorResponse {
-    private String error;
+    private final String error;
     private ArrayList<String> details;
 
     public ErrorResponse(String error) {

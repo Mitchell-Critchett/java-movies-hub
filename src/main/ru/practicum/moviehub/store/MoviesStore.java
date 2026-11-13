@@ -3,7 +3,6 @@ package ru.practicum.moviehub.store;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import ru.practicum.moviehub.model.Movie;
 
 import java.util.HashMap;
@@ -14,9 +13,9 @@ public class MoviesStore {
 
     private final Random random = new Random();
 
-    private HashMap<Integer, Movie> moviesStore = new HashMap<>();
+    private final HashMap<Integer, Movie> moviesStore = new HashMap<>();
 
-    private Gson gson = new GsonBuilder()
+    private final Gson gson = new GsonBuilder()
             .setPrettyPrinting()
             .create();
 
