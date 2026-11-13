@@ -2,6 +2,7 @@ package ru.practicum.moviehub.http;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import com.sun.net.httpserver.HttpExchange;
 import ru.practicum.moviehub.api.ErrorResponse;
 import ru.practicum.moviehub.model.MovieCreateRequest;
@@ -66,7 +67,9 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
 
     private void addMovie(HttpExchange ex) throws IOException {
 
-        if (!ex.getResponseHeaders().get("Content-Type").getFirst().equals("application/json; UTF-8")) {
+        String contentType = ex.getRequestHeaders().getFirst("Content-Type");
+
+        if (contentType == null || !contentType.startsWith("application/json")) {
             sendUnsupportedMediaType(ex);
             return;
         }
@@ -104,9 +107,12 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
             sendJson(ex, 201, moviesStore.saveMovie(movieToCreate.title, movieToCreate.year));
 
 
+        } catch (JsonSyntaxException e) {
+            sendBadRequest(ex);
+            return;
         } catch (IOException e) {
             // Ошибка чтения тела запроса
-            sendJson(ex, 400, gson.toJson(new ErrorResponse("Некорректный json")));
+            sendJson(ex, 500, gson.toJson(new ErrorResponse("Неизвестная ошибка")));
         }
 
     }
@@ -116,27 +122,30 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
     }
 
     private void searchByYear(HttpExchange ex, String query) throws IOException {
-        for (String param : query.split("&")) {
-            String[] pair = param.split("=");
+        String[] params = query.split("&");
 
-            if (pair[0].equals("year")) {
-                String year = pair.length > 1 ? pair[1] : "";
+        for (String param : params) {
+            String[] keyValue = param.split("=", 2);
+
+            if (keyValue.length == 2 && keyValue[0].equals("year")) {
 
                 try {
-                    int yearInt = Integer.parseInt(year);
+                    int year = Integer.parseInt(keyValue[1]);
 
-                    if (yearInt < 1888 || yearInt > LocalDateTime.now().getYear() + 1) {
+                    if (year < 1888 || year > LocalDateTime.now().getYear() + 1) {
                         ErrorResponse error = new ErrorResponse("год должен быть между 1888 и 2026");
                         sendJson(ex, 400, gson.toJson(error));
                         return;
                     }
-                    sendJson(ex, 200, moviesStore.searchByYear(yearInt));
+                    sendJson(ex, 200, moviesStore.searchByYear(year));
 
                 } catch (NumberFormatException e) {
                     ErrorResponse error = new ErrorResponse("Неправильный формат параметра year");
                     sendJson(ex, 400, gson.toJson(error));
                 }
+                return;
             }
+            sendBadRequest(ex);
         }
 
     }
@@ -165,9 +174,9 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
             boolean isDeleted = moviesStore.deleteMovieById(intId);
 
             if (isDeleted) {
-                sendNotFound(ex);
-            } else {
                 sendNoContent(ex);
+            } else {
+                sendNotFound(ex);
             }
         } catch (NumberFormatException e) {
             ErrorResponse error = new ErrorResponse("Неправильный формат id");
