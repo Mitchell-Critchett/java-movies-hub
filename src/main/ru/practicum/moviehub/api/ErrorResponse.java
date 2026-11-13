@@ -1,5 +1,17 @@
 package ru.practicum.moviehub.api;
 
-public class ErrorResponse {
+import java.util.ArrayList;
 
+public class ErrorResponse {
+    private final String error;
+    private ArrayList<String> details;
+
+    public ErrorResponse(String error) {
+        this.error = error;
+    }
+
+    public ErrorResponse(String error, ArrayList<String> details) {
+        this.error = error;
+        this.details = details;
+    }
 }
