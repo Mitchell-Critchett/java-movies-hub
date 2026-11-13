@@ -1,3 +1,4 @@
+
 package ru.practicum.moviehub.http;
 
 import com.google.gson.JsonArray;
@@ -15,8 +16,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class MoviesApiTest {
 
@@ -97,13 +97,7 @@ class MoviesApiTest {
 
     @Test
     void addMovie_withValidData_returnsCreatedMovie() throws Exception {
-        HttpResponse<String> response =
-                post("/movies", """
-                        {
-                            "title": "Interstellar",
-                            "year": 2014
-                        }
-                        """);
+        HttpResponse<String> response = post("/movies", "{\"title\": \"Interstellar\", \"year\": 2014}");
 
         assertEquals(201, response.statusCode());
 
@@ -122,13 +116,7 @@ class MoviesApiTest {
 
     @Test
     void addMovie_withEmptyTitle_returnsValidationError() throws Exception {
-        HttpResponse<String> response =
-                post("/movies", """
-                        {
-                            "title": "",
-                            "year": 2000
-                        }
-                        """);
+        HttpResponse<String> response = post("/movies", "{\"title\": \"\", \"year\": 2000}");
 
         assertEquals(422, response.statusCode());
 
@@ -321,12 +309,8 @@ class MoviesApiTest {
     }
 
     private int createMovie(String title, int year) throws Exception {
-        HttpResponse<String> response = post("/movies", """
-                {
-                    "title": "%s",
-                    "year": %d
-                }
-                """.formatted(title, year));
+        HttpResponse<String> response = post("/movies", "{\"title\": \"%s\", \"year\": %d}"
+                .formatted(title, year));
 
         assertEquals(201, response.statusCode(),
                 "Не удалось создать тестовый фильм: " + response.body());
