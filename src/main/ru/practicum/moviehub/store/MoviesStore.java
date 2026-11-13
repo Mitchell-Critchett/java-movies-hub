@@ -29,7 +29,7 @@ public class MoviesStore {
         moviesStore.values()
                 .forEach(movie -> jsonArray.add(gson.toJsonTree(movie)));
 
-        return jsonArray.getAsString();
+        return gson.toJson(jsonArray);
     }
 
     public String saveMovie(String title, int year) {
@@ -67,6 +67,6 @@ public class MoviesStore {
                 .map(movie -> gson.toJsonTree(movie))
                 .forEach(jsonArray::add);
 
-        return jsonArray.getAsString();
+        return gson.toJson(jsonArray);
     }
 }
