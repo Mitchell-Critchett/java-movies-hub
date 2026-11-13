@@ -24,6 +24,11 @@ abstract class BaseHttpHandler implements HttpHandler {
         ex.sendResponseHeaders(204, -1);
     }
 
+    protected void sendBadRequest(HttpExchange ex) throws java.io.IOException {
+        ex.getResponseHeaders().set("Content-Type", CT_JSON);
+        ex.sendResponseHeaders(204, -1);
+    }
+
     protected void sendNotFound(HttpExchange ex) throws java.io.IOException {
         ex.getResponseHeaders().set("Content-Type", CT_JSON);
         ex.sendResponseHeaders(404, -1);
@@ -34,8 +39,10 @@ abstract class BaseHttpHandler implements HttpHandler {
         ex.sendResponseHeaders(415, -1);
     }
 
-    protected void sendUnprocessableEntity(HttpExchange ex) throws java.io.IOException {
+    protected void sendMethodNotAllowed(HttpExchange ex) throws java.io.IOException {
         ex.getResponseHeaders().set("Content-Type", CT_JSON);
-        ex.sendResponseHeaders(422, -1);
+        ex.sendResponseHeaders(405, -1);
     }
+
+
 }

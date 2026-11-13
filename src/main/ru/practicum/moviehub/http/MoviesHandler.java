@@ -2,13 +2,16 @@ package ru.practicum.moviehub.http;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
 import ru.practicum.moviehub.api.ErrorResponse;
+import ru.practicum.moviehub.model.MovieCreateRequest;
 import ru.practicum.moviehub.store.MoviesStore;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Optional;
 
 public class MoviesHandler extends BaseHttpHandler { // Расширьте базовый класс BaseHttpHandler
@@ -28,29 +31,84 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
         String method = ex.getRequestMethod();
         String path = ex.getRequestURI().getPath();
 
-        if (method.equalsIgnoreCase("GET")) {
-            String query = ex.getRequestURI().getQuery();
+        switch (method) {
 
-            if (path.matches("/movies/[^/]+")) {
-                String id = path.substring(path.lastIndexOf("/") + 1);
-                getMovieById(ex, id);
+            case "GET": {
+                String query = ex.getRequestURI().getQuery();
+
+                if (path.matches("/movies/[^/]+")) {
+                    String id = path.substring(path.lastIndexOf("/") + 1);
+                    getMovieById(ex, id);
+                } else if (query != null) {
+                    searchByYear(ex, query);
+                } else {
+                    getMovies(ex);
+                    return;
+                }
+                break;
             }
 
-            if (query != null) {
-                searchByYear(ex, query);
-            } else {
-                getMovies(ex);
+            case "POST": {
+                addMovie(ex);
+                break;
             }
 
-        }
-
-        if (method.equalsIgnoreCase("POST")) {
-            addMovie(ex);
+            case "DELETE": {
+                if (path.matches("/movies/[^/]+")) {
+                    String id = path.substring(path.lastIndexOf("/") + 1);
+                    deleteMovieById(ex, id);
+                } else {
+                    sendBadRequest(ex);
+                }
         }
     }
+    }
 
-    private void addMovie(HttpExchange ex) {
-        JsonObject json = new J
+    private void addMovie(HttpExchange ex) throws IOException {
+
+        if (!ex.getResponseHeaders().get("Content-Type").getFirst().equals("application/json; UTF-8")) {
+            sendUnsupportedMediaType(ex);
+            return;
+        }
+
+        MovieCreateRequest movieToCreate;
+
+        try (InputStream is = ex.getRequestBody()) {
+            String body = new String(
+                    is.readAllBytes(),
+                    StandardCharsets.UTF_8
+            );
+
+            movieToCreate = gson.fromJson(body, MovieCreateRequest.class);
+
+            if (movieToCreate == null) {
+                throw new IllegalArgumentException();
+            }
+
+            ArrayList<String> errorsArray = new ArrayList<>();
+
+            if (movieToCreate.title.isBlank()) {
+                errorsArray.add("название не должно быть пустым");
+            }
+            if (movieToCreate.title.length() > 100) {
+                errorsArray.add("название слишком длинное");
+            }
+            if (movieToCreate.year < 1880 || movieToCreate.year > LocalDateTime.now().getYear() + 1) {
+                errorsArray.add("год должен быть между 1888 и 2026");
+            }
+            if (!errorsArray.isEmpty()) {
+                sendJson(ex, 422, gson.toJson(new ErrorResponse("Ошибка валидации", errorsArray)));
+                return;
+            }
+
+            sendJson(ex, 201, moviesStore.saveMovie(movieToCreate.title, movieToCreate.year));
+
+
+        } catch (IOException e) {
+            // Ошибка чтения тела запроса
+            sendJson(ex, 400, gson.toJson(new ErrorResponse("Некорректный json")));
+        }
+
     }
 
     private void getMovies(HttpExchange ex) throws IOException {
@@ -87,12 +145,29 @@ public class MoviesHandler extends BaseHttpHandler { // Расширьте ба�
         try {
             int intId = Integer.parseInt(id);
 
-            Optional<String> optionalMovie= moviesStore.getById(intId);
+            Optional<String> optionalMovie = moviesStore.getById(intId);
 
-            if (optionalMovie.isEmpty()){
+            if (optionalMovie.isEmpty()) {
                 sendNotFound(ex);
             } else {
                 sendJson(ex, 200, optionalMovie.get());
+            }
+        } catch (NumberFormatException e) {
+            ErrorResponse error = new ErrorResponse("Неправильный формат id");
+            sendJson(ex, 400, gson.toJson(error));
+        }
+    }
+
+    private void deleteMovieById(HttpExchange ex, String id) throws IOException {
+        try {
+            int intId = Integer.parseInt(id);
+
+            boolean isDeleted = moviesStore.deleteMovieById(intId);
+
+            if (isDeleted) {
+                sendNotFound(ex);
+            } else {
+                sendNoContent(ex);
             }
         } catch (NumberFormatException e) {
             ErrorResponse error = new ErrorResponse("Неправильный формат id");
