@@ -1,0 +1,103 @@
+package ru.practicum.moviehub.http;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.sun.net.httpserver.HttpExchange;
+import ru.practicum.moviehub.api.ErrorResponse;
+import ru.practicum.moviehub.store.MoviesStore;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+public class MoviesHandler extends BaseHttpHandler { // Расширьте базовый класс BaseHttpHandler
+
+    private final MoviesStore moviesStore;
+
+    private final Gson gson = new GsonBuilder()
+            .setPrettyPrinting()
+            .create();
+
+    public MoviesHandler(MoviesStore moviesStore) {
+        this.moviesStore = moviesStore;
+    }
+
+    @Override
+    public void handle(HttpExchange ex) throws IOException {
+        String method = ex.getRequestMethod();
+        String path = ex.getRequestURI().getPath();
+
+        if (method.equalsIgnoreCase("GET")) {
+            String query = ex.getRequestURI().getQuery();
+
+            if (path.matches("/movies/[^/]+")) {
+                String id = path.substring(path.lastIndexOf("/") + 1);
+                getMovieById(ex, id);
+            }
+
+            if (query != null) {
+                searchByYear(ex, query);
+            } else {
+                getMovies(ex);
+            }
+
+        }
+
+        if (method.equalsIgnoreCase("POST")) {
+            addMovie(ex);
+        }
+    }
+
+    private void addMovie(HttpExchange ex) {
+        JsonObject json = new J
+    }
+
+    private void getMovies(HttpExchange ex) throws IOException {
+        sendJson(ex, 200, moviesStore.getAllMovies());
+    }
+
+    private void searchByYear(HttpExchange ex, String query) throws IOException {
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=");
+
+            if (pair[0].equals("year")) {
+                String year = pair.length > 1 ? pair[1] : "";
+
+                try {
+                    int yearInt = Integer.parseInt(year);
+
+                    if (yearInt < 1888 || yearInt > LocalDateTime.now().getYear() + 1) {
+                        ErrorResponse error = new ErrorResponse("год должен быть между 1888 и 2026");
+                        sendJson(ex, 400, gson.toJson(error));
+                        return;
+                    }
+                    sendJson(ex, 200, moviesStore.searchByYear(yearInt));
+
+                } catch (NumberFormatException e) {
+                    ErrorResponse error = new ErrorResponse("Неправильный формат параметра year");
+                    sendJson(ex, 400, gson.toJson(error));
+                }
+            }
+        }
+
+    }
+
+    private void getMovieById(HttpExchange ex, String id) throws IOException {
+        try {
+            int intId = Integer.parseInt(id);
+
+            Optional<String> optionalMovie= moviesStore.getById(intId);
+
+            if (optionalMovie.isEmpty()){
+                sendNotFound(ex);
+            } else {
+                sendJson(ex, 200, optionalMovie.get());
+            }
+        } catch (NumberFormatException e) {
+            ErrorResponse error = new ErrorResponse("Неправильный формат id");
+            sendJson(ex, 400, gson.toJson(error));
+        }
+    }
+}
+
